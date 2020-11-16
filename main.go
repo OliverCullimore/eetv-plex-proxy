@@ -79,7 +79,7 @@ type DiscoverData struct {
 var proxyHost = "localhost"
 var proxyPort = "5004"
 var proxyBaseURL = "http://" + proxyHost + ":" + proxyPort + "/"
-var configFilepath = "config.json"
+var configFilepath = "/config/config.json"
 var configuration = config.New()
 var eetvBaseURL = ""
 var eetvAppKey = ""
