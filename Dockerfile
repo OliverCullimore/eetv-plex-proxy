@@ -8,6 +8,10 @@ RUN apk update && apk add --no-cache git
 ## we create a directory within our docker image
 ## that will contain all of the code for our app
 RUN mkdir /app
+## we create a directory within our docker image
+## that will contain all of the configuration for
+## our app
+RUN mkdir /config
 ## We need to copy the current directory
 ## into our /app directory
 ADD . /app
@@ -19,3 +23,5 @@ WORKDIR /app
 RUN go build -o main .
 ## here we trigger our newly built Go program
 CMD ["/app/main"]
+## expose necessary ports
+EXPOSE 5004 1900

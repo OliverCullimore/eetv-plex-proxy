@@ -5,19 +5,20 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	ssdp "github.com/koron/go-ssdp"
+	"github.com/olivercullimore/eetv-plex-proxy/config"
 	"github.com/olivercullimore/eetv-plex-proxy/eetv"
+	"github.com/olivercullimore/eetv-plex-proxy/utils"
 )
 
 // LineupItem struct
@@ -75,13 +76,46 @@ type DiscoverData struct {
 	LineupURL       string
 }
 
-var proxyBaseURL = "http://" + getHostIP().String() + "/"
+var proxyHost = "localhost"
+var proxyPort = "5004"
+var proxyBaseURL = "http://" + proxyHost + ":" + proxyPort + "/"
+var configFilepath = "config.json"
+var configuration = config.New()
 var eetvBaseURL = ""
 var eetvAppKey = ""
 var eetvTuners int64 = 1
 var eetvFriendlyName = "PlexProxy"
 var eetvAPI = eetv.New("", "")
 var discoverData = new(DiscoverData)
+
+func ssdpAdvertise(quit chan bool) {
+	ad, err := ssdp.Advertise(
+		"urn:schemas-upnp-org:device:MediaServer:1", // send as "ST"
+		"uuid:"+discoverData.DeviceID,               // send as "USN"
+		proxyBaseURL+"device.xml",                   // send as "LOCATION"
+		"ssdp for EETV Plex Proxy",                  // send as "SERVER"
+		3600)                                        // send as "maxAge" in "CACHE-CONTROL"
+	if err != nil {
+		log.Fatal("Error advertising ssdp: ", err)
+	}
+
+	aliveTick := time.Tick(5 * time.Second)
+
+	// run Advertiser infinitely.
+	for {
+		select {
+		case <-aliveTick:
+			ad.Alive()
+		case <-quit:
+			fmt.Println("Closing ssdp service")
+			// send/multicast "byebye" message.
+			ad.Bye()
+			// teminate Advertiser.
+			ad.Close()
+			return
+		}
+	}
+}
 
 func device(w http.ResponseWriter, r *http.Request) {
 	specVersion := DeviceDataSpecVersion{
@@ -163,59 +197,6 @@ func lineupStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(lineupStatusData)
 }
 
-// GetRecordings function
-/*func (api) GetRecordings() (string, error) {
-	recordings, err := eetvAPI.GetRecordings("", "", "")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Recordings: %+v", recordings)
-}*/
-
-func ssdpAdvertise(quit chan bool) {
-	myIP := getHostIP().String()
-
-	ad, err := ssdp.Advertise(
-		"urn:schemas-upnp-org:device:MediaServer:1", // send as "ST"
-		"uuid:"+discoverData.DeviceID,               // send as "USN"
-		"http://"+myIP+":5004/device.xml",           // send as "LOCATION"
-		"ssdp for EETV Plex Proxy",                  // send as "SERVER"
-		3600)                                        // send as "maxAge" in "CACHE-CONTROL"
-	if err != nil {
-		log.Fatal("Error advertising ssdp: ", err)
-	}
-
-	aliveTick := time.Tick(5 * time.Second)
-
-	// run Advertiser infinitely.
-	for {
-		select {
-		case <-aliveTick:
-			ad.Alive()
-		case <-quit:
-			fmt.Println("Closing ssdp service")
-			// send/multicast "byebye" message.
-			ad.Bye()
-			// teminate Advertiser.
-			ad.Close()
-			return
-		}
-	}
-}
-
-func getHostIP() net.IP {
-	host, _ := os.Hostname()
-	addrs, _ := net.LookupIP(host)
-
-	for _, addr := range addrs {
-		if ipv4 := addr.To4(); ipv4 != nil && ipv4[0] == 192 {
-			return ipv4
-			//fmt.Println("IPv4: ", ipv4)
-		}
-	}
-	return net.IP{}
-}
-
 func handleRequests() {
 	// Create a new instance of a mux router
 	r := mux.NewRouter().StrictSlash(true)
@@ -227,17 +208,19 @@ func handleRequests() {
 	r.HandleFunc("/lineup.post", lineupPost).Methods("GET", "POST")
 	r.HandleFunc("/lineup_status.json", lineupStatus)
 
-	fmt.Println(strings.TrimSuffix(proxyBaseURL, "/") + ":5004")
-	log.Fatal(http.ListenAndServe(":5004", r))
+	fmt.Println(proxyBaseURL)
+	log.Fatal(http.ListenAndServe(":"+proxyPort, r))
 }
 
 func main() {
 	// Check for enviroment variables
-	envval, envpresent := os.LookupEnv("PROXY_BASE_URL")
+	envval, envpresent := os.LookupEnv("PROXY_HOST")
 	if envpresent && envval != "" {
-		proxyBaseURL = "http://" + envval + "/"
-	} else {
-		proxyBaseURL = "http://" + getHostIP().String() + "/"
+		proxyHost = envval
+	}
+	envval, envpresent = os.LookupEnv("PROXY_PORT")
+	if envpresent && envval != "" {
+		proxyPort = envval
 	}
 	envval, envpresent = os.LookupEnv("EETV_IP")
 	if envpresent && envval != "" {
@@ -246,6 +229,23 @@ func main() {
 	envval, envpresent = os.LookupEnv("EETV_APP_KEY")
 	if envpresent && envval != "" {
 		eetvAppKey = envval
+	}
+	// Set new proxy base URL using the enviroment variables
+	proxyBaseURL = "http://" + proxyHost + ":" + proxyPort + "/"
+	// Set UUID
+	configuration.UUID = uuid.New().String()
+
+	// Check for config file
+	if utils.FileExists(configFilepath) {
+		err := configuration.Load(configFilepath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		err := configuration.Save(configFilepath)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// Init EETV API with config
@@ -275,7 +275,7 @@ func main() {
 	discoverData.FirmwareName = "hdhomeruntc_atsc"
 	discoverData.TunerCount = eetvTuners
 	discoverData.FirmwareVersion = "20150826"
-	discoverData.DeviceID = "2f70c0d7-90a3-4429-8275-cbeeee9cd605"
+	discoverData.DeviceID = configuration.UUID
 	discoverData.DeviceAuth = "test1234"
 	discoverData.BaseURL = proxyBaseURL
 	discoverData.LineupURL = proxyBaseURL + "lineup.json"
