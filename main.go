@@ -266,6 +266,7 @@ func main() {
 			log.Fatal(err)
 		}
 		eetvFriendlyName = eetvFriendlyName + "-" + reg.ReplaceAllString(eetvInfo.System.FriendlyName, "-")
+		fmt.Println("Connected to: " + eetvInfo.System.FriendlyName)
 	}
 
 	// Set discover data
