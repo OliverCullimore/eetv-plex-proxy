@@ -183,7 +183,7 @@ func lineup(w http.ResponseWriter, r *http.Request) {
 
 func liveChannel(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	http.Redirect(w, r, eetvBaseURL+"Live/Channels/"+vars["channel"], 301)
+	http.Redirect(w, r, eetvBaseURL+"Live/Channels/get?channelId="+vars["channel"], 301)
 }
 
 func lineupPost(w http.ResponseWriter, r *http.Request) {
