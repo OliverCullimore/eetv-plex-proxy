@@ -171,7 +171,7 @@ func lineup(w http.ResponseWriter, r *http.Request) {
 		lineup = append(lineup, LineupItem{
 			GuideName:   channel.Name,
 			GuideNumber: strconv.Itoa(int(channel.Zap)),
-			URL:         eetvBaseURL + "Live/Channels/get?channelId=" + channel.ID,
+			URL:         proxyBaseURL + "Live/Channels/" + channel.ID,
 		})
 		//fmt.Printf("Live Channels: %+v", channel)
 	}
@@ -179,6 +179,11 @@ func lineup(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(lineup)
+}
+
+func liveChannel(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	http.Redirect(w, r, eetvBaseURL+"Live/Channels/"+vars["channel"], 301)
 }
 
 func lineupPost(w http.ResponseWriter, r *http.Request) {
@@ -207,6 +212,7 @@ func handleRequests() {
 	r.HandleFunc("/lineup.json", lineup)
 	r.HandleFunc("/lineup.post", lineupPost).Methods("GET", "POST")
 	r.HandleFunc("/lineup_status.json", lineupStatus)
+	r.HandleFunc("/Live/Channels/{channel}", liveChannel)
 
 	fmt.Println(proxyBaseURL)
 	log.Fatal(http.ListenAndServe(":"+proxyPort, r))
