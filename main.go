@@ -16,8 +16,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	ssdp "github.com/koron/go-ssdp"
+	"github.com/olivercullimore/eetv-client"
 	"github.com/olivercullimore/eetv-plex-proxy/config"
-	"github.com/olivercullimore/eetv-plex-proxy/eetv"
 	"github.com/olivercullimore/eetv-plex-proxy/utils"
 )
 
@@ -105,13 +105,22 @@ func ssdpAdvertise(quit chan bool) {
 	for {
 		select {
 		case <-aliveTick:
-			ad.Alive()
+			err = ad.Alive()
+			if err != nil {
+				log.Fatal("Error advertising ssdp: ", err)
+			}
 		case <-quit:
 			fmt.Println("Closing ssdp service")
 			// send/multicast "byebye" message.
-			ad.Bye()
-			// teminate Advertiser.
-			ad.Close()
+			err = ad.Bye()
+			if err != nil {
+				log.Fatal("Error advertising ssdp: ", err)
+			}
+			// terminate Advertiser.
+			err = ad.Close()
+			if err != nil {
+				log.Fatal("Error advertising ssdp: ", err)
+			}
 			return
 		}
 	}
@@ -142,12 +151,18 @@ func device(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	w.Header().Set("Content-Type", "application/xml")
-	fmt.Fprintf(w, string(deviceXML))
+	_, err = fmt.Fprintf(w, string(deviceXML))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func discover(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(discoverData)
+	err := json.NewEncoder(w).Encode(discoverData)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func lineup(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +178,7 @@ func lineup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Printf("Live Channels: %+v", liveChannels)
+	// fmt.Printf("Live Channels: %+v", liveChannels)
 
 	// Convert channels list into line-up
 	var lineup []LineupItem
@@ -173,12 +188,15 @@ func lineup(w http.ResponseWriter, r *http.Request) {
 			GuideNumber: strconv.Itoa(int(channel.Zap)),
 			URL:         proxyBaseURL + "Live/Channels/" + channel.ID,
 		})
-		//fmt.Printf("Live Channels: %+v", channel)
+		// fmt.Printf("Live Channels: %+v", channel)
 	}
-	//fmt.Printf("Lineup: %+v", lineup)
+	// fmt.Printf("Lineup: %+v", lineup)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(lineup)
+	err = json.NewEncoder(w).Encode(lineup)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func liveChannel(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +205,10 @@ func liveChannel(w http.ResponseWriter, r *http.Request) {
 }
 
 func lineupPost(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "")
+	_, err := fmt.Fprintf(w, "")
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func lineupStatus(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +220,10 @@ func lineupStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(lineupStatusData)
+	err := json.NewEncoder(w).Encode(lineupStatusData)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func handleRequests() {
@@ -219,7 +243,7 @@ func handleRequests() {
 }
 
 func main() {
-	// Check for enviroment variables
+	// Check for environment variables
 	envval, envpresent := os.LookupEnv("PROXY_HOST")
 	if envpresent && envval != "" {
 		proxyHost = envval
@@ -236,7 +260,7 @@ func main() {
 	if envpresent && envval != "" {
 		eetvAppKey = envval
 	}
-	// Set new proxy base URL using the enviroment variables
+	// Set new proxy base URL using the environment variables
 	proxyBaseURL = "http://" + proxyHost + ":" + proxyPort + "/"
 	// Set UUID
 	configuration.UUID = uuid.New().String()
@@ -262,7 +286,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Printf("Info: %+v", eetvInfo)
+	// fmt.Printf("Info: %+v", eetvInfo)
 	if eetvInfo.System.Tuners > 0 {
 		eetvTuners = eetvInfo.System.Tuners
 	}
