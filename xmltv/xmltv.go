@@ -1,4 +1,4 @@
-package eetv
+package xmltv
 
 import (
 	"io/ioutil"
@@ -6,23 +6,19 @@ import (
 	"net/http"
 )
 
-// eetvapi struct
-type eetvapi struct {
+// xmltvapi struct
+type xmltvapi struct {
 	BaseURL string
-	AppKey  string
 }
 
 // New function
-func New(baseURL string, appKey string) eetvapi {
-	if appKey == "" {
-		appKey = "9CCEE7773DE99C8E687AE3AB6009156B8B2A5309" // SHA-1 of [account.service.moonstone]appKey= in netgem-op.ini inside the APK
-	}
-	api := eetvapi{baseURL, appKey}
+func New() xmltvapi {
+	api := xmltvapi{"http://www.xmltv.co.uk/"}
 	return api
 }
 
 // MakeRequest function
-func (api eetvapi) MakeRequest(url string, method string, params map[string]string) ([]byte, error) {
+func (api xmltvapi) MakeRequest(url string, method string, params map[string]string) ([]byte, error) {
 	if method == "" {
 		method = "GET"
 	}
