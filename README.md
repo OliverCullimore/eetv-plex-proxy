@@ -10,7 +10,7 @@ This application is distributed as a docker image, please ensure you have docker
 
 Run the following command replacing `YOUREETVBOXIP` with your EETV box IP address:
 
-`docker run -d -p 5004:5004 --name eetv-plex-proxy --env PROXY_HOST=localhost --env PROXY_PORT=5004 --env EETV_IP=YOUREETVBOXIP --restart unless-stopped -v eetv_plex_proxy:/config olivercullimore/eetv-plex-proxy`
+`docker run -d -p 5004:5004 --name eetv-plex-proxy -e PROXY_HOST=localhost -e PROXY_PORT=5004 -e EETV_IP=YOUREETVBOXIP --restart unless-stopped -v eetv_plex_proxy:/config olivercullimore/eetv-plex-proxy`
 
 ## EETV Proxy Configuration
 
