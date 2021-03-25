@@ -25,7 +25,7 @@ Set the parameters and environment variables below to configure the proxy:
 | `-e EETV_APP_KEY=` | Specify the AppKey for the EETV Box. Leave blank to use default AppKey |
 
 ## Plex configuration
-Enter the IP address or hostname of the host running eetv-plex-proxy including port 5004. E.g. ```192.168.1.50:5004```
+Enter the IP address or hostname of the host and port of the running eetv-plex-proxy application. E.g. `192.168.1.50:5004`
 
 ## For development / running standalone
 
