@@ -7,5 +7,5 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/koron/go-ssdp v0.0.2
 	github.com/olivercullimore/eetv-client v0.0.0-20210323173718-6e1a4d5a16fb
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
+	golang.org/x/net v0.7.0 // indirect
 )
